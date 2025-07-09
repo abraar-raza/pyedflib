@@ -848,6 +848,7 @@ def crop_edf(
     stop: Optional[Union[datetime, int, float]] = None,
     start_format: str = "datetime",
     stop_format: str = "datetime",
+    exclude_channels: list = [],
     verbose: bool = True
 ) -> None:
     """Crop an EDF file to desired start/stop times.
@@ -874,6 +875,8 @@ def crop_edf(
         The format of ``start``: "datetime" (default) or "seconds".
     stop_format : str
         The format of ``stop``: "datetime" (default) or "seconds".
+    exclude_channels : list
+        The channels to remove when writing the cropped EDF file.
     verbose : bool
         If True (default), print some details about the original and cropped
         file.
@@ -923,9 +926,18 @@ def crop_edf(
     assert stop > current_start, 'new stop value must not be before current start of recording'
     stop_diff_from_start = (stop - current_start).total_seconds()
 
+    # Omitting unneeded channels
+    chn_to_keep = []
+    temp_list = []
+    for idx, hdr in enumerate(signals_headers):
+        if hdr['label'] not in exclude_channels:
+            temp_list.append(hdr)
+            chn_to_keep.append(idx)
+    signals_headers = temp_list
+
     # Crop each signal
     signals = []
-    for i in range(len(edf.getSignalHeaders())):
+    for i in chn_to_keep:
         sf = edf.getSampleFrequency(i)
         # Convert from seconds to samples
         start_idx = int(np.round(start_diff_from_start * sf))
